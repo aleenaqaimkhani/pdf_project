@@ -5,9 +5,11 @@ import streamlit as st
 from PyPDF2 import PdfReader
 from dotenv import load_dotenv
 import csv
+from gtts import gTTS
+import base64
 
 # ------------------ Page Setup ------------------
-st.set_page_config(page_title="Artificial Intelligence & Machine Learning ", layout="wide")
+st.set_page_config(page_title="Artificial Intelligence & Machine Learning", layout="wide")
 load_dotenv()
 API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=API_KEY)
@@ -33,7 +35,7 @@ tone = st.sidebar.radio("Select Answer Tone", ["Formal", "Friendly"])
 
 st.sidebar.markdown("---") 
 
-# ------------------ Feedback Box (Moved Lower) ------------------
+# ------------------ Feedback Box ------------------
 st.sidebar.title("📝 Feedback")
 feedback = st.sidebar.text_area("Your Feedback")
 if st.sidebar.button("Save Feedback"):
@@ -51,9 +53,7 @@ if st.sidebar.button("Save Feedback"):
     else:
         st.sidebar.warning("⚠️ Please write feedback before saving.")
 
-
 # ------------------ Main App ------------------
-st.set_page_config(page_title="Artificial Intelligence & Machine Learning", layout="centered")
 st.title("Artificial Intelligence & Machine Learning")
 st.markdown("AI is a field of computer science that enables machines to mimic human intelligence—like reasoning, learning, and decision-making.")
 st.markdown("---")
@@ -66,13 +66,12 @@ for chat in st.session_state.chat_history:
         st.markdown(chat["bot"])
 
 # Chat input
-user_input = st.chat_input("Ask a question related to the AI...")
+user_input = st.chat_input("Ask a question related to AI & ML...")
 
 if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
 
-    # Greeting recognition
     greetings = ["hello", "hi", "hey", "salam", "assalamualaikum"]
     if user_input.lower().strip() in greetings:
         bot_reply = "Hello! I'm here to help you. Ask me anything related to the material."
@@ -80,7 +79,6 @@ if user_input:
         with st.spinner("Generating answer..."):
             model = genai.GenerativeModel("gemini-1.5-flash-8b")
 
-            # Tone-based prompt
             if tone == "Formal":
                 style_prompt = "Answer in a formal, academic tone with clear and structured explanation."
             else:
@@ -89,7 +87,7 @@ if user_input:
             prompt = f"""
 Use only the following content to answer. Do NOT add outside knowledge.
 If the question is unrelated, respond with:
-"I'm only able to answer questions based on the uploaded CSS content."
+"I'm only able to answer questions based on the uploaded AI & Machine Learning content."
 
 Tone instruction: {style_prompt}
 
@@ -105,9 +103,27 @@ User Question:
     with st.chat_message("assistant"):
         st.markdown(bot_reply)
 
+        # ------------------ Voice Output ------------------
+        try:
+            tts = gTTS(text=bot_reply, lang='en')
+            audio_file = "output.mp3"
+            tts.save(audio_file)
+
+            with open(audio_file, "rb") as f:
+                audio_bytes = f.read()
+                b64 = base64.b64encode(audio_bytes).decode()
+                audio_html = f"""
+                <audio controls autoplay>
+                    <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+                    Your browser does not support the audio element.
+                </audio>
+                """
+                st.markdown(audio_html, unsafe_allow_html=True)
+        except Exception as e:
+            st.warning(f"Audio generation failed: {e}")
+
     # Save chat
     st.session_state.chat_history.append({
         "user": user_input,
         "bot": bot_reply
     })
-
